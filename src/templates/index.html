@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroDash - Python Flask Console</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Decorative background elements -->
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo"></div>
+                <span class="brand-name">AeroDash</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" id="nav-dashboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    <span>控制面板</span>
+                </a>
+                <a href="/api/health" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>健康狀態 API</span>
+                </a>
+                <a href="/api/info" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>系統資訊 API</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator-container">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">Port: 19191</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1>系統主儀表板</h1>
+                    <p class="subtitle">即時監控與 Python Flask 微服務管理主機</p>
+                </div>
+                <div class="user-profile">
+                    <span class="badge">Flask Core v1.0.0</span>
+                </div>
+            </header>
+
+            <!-- Metrics Grid -->
+            <section class="metrics-grid">
+                <!-- Card 1: Server Status -->
+                <div class="metric-card">
+                    <div class="card-icon status-ok">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">伺服器狀態</span>
+                        <h2 class="card-value" id="status-val">Healthy</h2>
+                    </div>
+                </div>
+
+                <!-- Card 2: Uptime -->
+                <div class="metric-card">
+                    <div class="card-icon status-time">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">系統可用率</span>
+                        <h2 class="card-value" id="uptime-val">99.99%</h2>
+                    </div>
+                </div>
+
+                <!-- Card 3: Memory -->
+                <div class="metric-card">
+                    <div class="card-icon status-memory">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">記憶體耗用</span>
+                        <h2 class="card-value" id="memory-val">48.2 MB</h2>
+                    </div>
+                </div>
+
+                <!-- Card 4: CPU -->
+                <div class="metric-card">
+                    <div class="card-icon status-cpu">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-label">CPU 負載</span>
+                        <h2 class="card-value" id="cpu-val">12.4%</h2>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Expansion Features Grid (Stocks & Afternoon Company Schedule) -->
+            <section class="expansion-grid">
+                <!-- Stock Watchlist Panel -->
+                <div class="detail-card stock-watchlist">
+                    <div class="card-header">
+                        <h3>指定股票行情 (Watchlist)</h3>
+                        <button class="btn btn-secondary btn-icon" id="btn-refresh-stocks" title="重新整理股市行情">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="stock-ticker-grid" id="stock-ticker-container">
+                        <div class="loading-spinner-container">
+                            <div class="spinner"></div>
+                            <span>正在讀取指定股票報價...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Afternoon Schedule Panel -->
+                <div class="detail-card schedule-panel">
+                    <div class="card-header">
+                        <h3>下午上班行程</h3>
+                        <span class="badge" id="schedule-status-tag" style="background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.3); color: var(--accent-cyan);">準時上工</span>
+                    </div>
+                    <div class="schedule-body">
+                        <div class="company-profile-card">
+                            <div class="company-logo-avatar">W</div>
+                            <div class="company-profile-info">
+                                <h4 id="company-name-val">載入中...</h4>
+                                <p class="company-dept" id="company-dept-val">載入中...</p>
+                            </div>
+                        </div>
+                        <div class="schedule-meta-list">
+                            <div class="schedule-meta-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="meta-icon">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span id="shift-time-val">載入中...</span>
+                            </div>
+                            <div class="schedule-meta-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="meta-icon">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span id="shift-location-val" style="font-size: 0.8rem;">載入中...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="timeline-divider">下午任務時程</div>
+                        <div class="timeline-list" id="timeline-container">
+                            <!-- Timeline elements will render here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Details Section -->
+            <section class="details-grid">
+                <!-- System Information Card -->
+                <div class="detail-card main-details">
+                    <div class="card-header">
+                        <h3>執行環境資訊 (System Specs)</h3>
+                        <button class="btn btn-secondary btn-icon" id="btn-refresh-info" title="重新整理資訊">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="icon-spin">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="system-info-list" id="system-info-container">
+                        <div class="loading-spinner-container">
+                            <div class="spinner"></div>
+                            <span>正在讀取系統規格...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Console & Control Actions -->
+                <div class="detail-card control-panel">
+                    <div class="card-header">
+                        <h3>終端控制與工具</h3>
+                    </div>
+                    <div class="control-actions">
+                        <p class="section-desc">透過下方快速鍵測試 API 與驗證連線回應：</p>
+                        <button class="btn btn-primary btn-full" id="btn-trigger-health">
+                            <span>觸發 API 健康度檢查</span>
+                        </button>
+                        <button class="btn btn-accent btn-full" id="btn-show-about">
+                            <span>顯示 Flask 專案資訊</span>
+                        </button>
+                    </div>
+                    <div class="console-box">
+                        <div class="console-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            <span class="console-title">Console Output</span>
+                        </div>
+                        <div class="console-body" id="console-logs">
+                            <div class="log-line text-muted">[system] 儀表板控制台初始化成功。</div>
+                            <div class="log-line text-muted">[system] 正在監聽連接埠 19191...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for About App -->
+    <div class="modal-overlay" id="about-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>關於 AeroDash Flask</h3>
+                <button class="modal-close" id="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="features-list">
+                    <div class="feature-item">
+                        <strong>結構化開發目錄：</strong> 程式碼以 <code>src/</code> 及 <code>test/</code> 切割，支援完美的開發與整合測試。
+                    </div>
+                    <div class="feature-item">
+                        <strong>連線設定：</strong> 專案配置於 <code>19191</code> port，利於反向代理 (Nginx) 或 Docker 容器部署。
+                    </div>
+                    <div class="feature-item">
+                        <strong>現代美學設計：</strong> 採用精美的 Glassmorphism 毛玻璃效果、動態漸層背景與細緻的微互動。
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="modal-ok-btn">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
