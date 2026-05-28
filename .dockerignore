@@ -1,0 +1,27 @@
+# 忽略 Git 相關檔案
+.git
+.gitignore
+
+# 忽略 Python 暫存與快取檔案
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# 忽略 OS 產生的暫存檔
+.DS_Store
+Thumbs.db
+
+# 忽略本機測試或開發用的說明與圖片檔案（若不需要包進 image 中）
+*.png
+*.jpg
+*.jpeg
+*.md
+*.txt
+# 但請保留 requirements.txt
+!requirements.txt
