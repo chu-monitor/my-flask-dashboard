@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroDash - S3 雲端儲存主控台</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Custom Styles for Upload Zone & Results */
+        .upload-dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.01);
+            transition: var(--transition-smooth);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-dropzone:hover, .upload-dropzone.dragover {
+            border-color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.05);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            transition: var(--transition-smooth);
+        }
+
+        .upload-dropzone:hover .upload-icon {
+            transform: scale(1.1);
+            background: rgba(139, 92, 246, 0.2);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-details {
+            display: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-info-text {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-align: left;
+        }
+
+        .file-icon {
+            color: var(--accent-cyan);
+            font-size: 1.5rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .remove-file-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-rose);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+        }
+
+        .remove-file-btn:hover {
+            background: rgba(244, 63, 94, 0.1);
+            transform: scale(1.1);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            height: 8px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan));
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        /* Upload Success Box */
+        .result-card {
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        .result-card.success-mode {
+            display: block;
+        }
+
+        .result-card.error-mode {
+            display: block;
+            background: rgba(244, 63, 94, 0.04);
+            border-color: rgba(244, 63, 94, 0.2);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-emerald);
+        }
+
+        .result-card.error-mode .result-status-dot {
+            background: var(--accent-rose);
+        }
+
+        .result-title {
+            font-weight: 600;
+            font-family: var(--font-heading);
+        }
+
+        .result-body {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .result-link-group {
+            margin-top: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .result-link-url {
+            font-family: monospace;
+            color: var(--accent-cyan);
+            font-size: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            user-select: all;
+            flex-grow: 1;
+        }
+
+        .copy-url-btn {
+            background: var(--accent-purple);
+            border: none;
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition-smooth);
+            flex-shrink: 0;
+        }
+
+        .copy-url-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* Image Preview Box */
+        .preview-box {
+            margin-top: 1rem;
+            border-radius: 12px;
+            overflow: hidden;
+            max-height: 250px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .preview-box img {
+            max-width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+        }
+
+        .security-badge {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Decorative background elements -->
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo"></div>
+                <span class="brand-name">AeroDash</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/" class="nav-item" id="nav-dashboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    <span>控制面板</span>
+                </a>
+                <a href="/feature3" class="nav-item active" id="nav-feature3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>S3 檔案上傳 (F3)</span>
+                </a>
+                <a href="/api/health" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>健康狀態 API</span>
+                </a>
+                <a href="/api/info" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>系統資訊 API</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator-container">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">Port: 19191</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1>AWS S3 檔案/圖片上傳服務</h1>
+                    <p class="subtitle">安全憑證代理上傳控制台 (Feature 3)</p>
+                </div>
+                <div class="user-profile">
+                    <span class="security-badge" title="本程式無任何 hardcoded 憑證，完全透過 IAM Role Instance Profile 來認證">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 14px; height: 14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        EC2 IAM Role 模式
+                    </span>
+                </div>
+            </header>
+
+            <!-- Grid Layout -->
+            <section class="details-grid" style="flex-grow: 1;">
+                <!-- Left: S3 Uploader Card -->
+                <div class="detail-card main-details">
+                    <div class="card-header">
+                        <h3>檔案安全上傳</h3>
+                        <span class="badge">S3 ap-east-2</span>
+                    </div>
+
+                    <form id="upload-form" method="POST" enctype="multipart/form-data">
+                        <!-- Dropzone area -->
+                        <div class="upload-dropzone" id="dropzone">
+                            <div class="upload-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                            </div>
+                            <h4 style="font-size: 1.1rem; font-weight: 600;">拖曳檔案至此或點擊選取檔案</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">支援各式圖片與文件檔案直接安全儲存</p>
+                            
+                            <input type="file" name="file" id="file-input" class="file-input">
+                        </div>
+
+                        <!-- Selected File Display -->
+                        <div class="file-details" id="file-details">
+                            <div class="file-info-text">
+                                <span class="file-icon">📄</span>
+                                <div>
+                                    <div class="file-name" id="file-display-name">filename.png</div>
+                                    <div class="file-size" id="file-display-size">0 KB</div>
+                                </div>
+                            </div>
+                            <button type="button" class="remove-file-btn" id="btn-remove-file" title="取消選擇">
+                                &times;
+                            </button>
+                        </div>
+
+                        <!-- Progress indicator -->
+                        <div class="progress-container" id="progress-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                            <button type="submit" class="btn btn-primary" style="flex: 1;" id="btn-submit-upload" disabled>
+                                <span>安全上傳至 S3</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Success / Error Response Card -->
+                    <div class="result-card" id="result-box">
+                        <div class="result-header">
+                            <div class="result-status-dot" id="result-status-dot"></div>
+                            <span class="result-title" id="result-title">上傳成功</span>
+                        </div>
+                        <div class="result-body" id="result-message">
+                            檔案已順利直接上傳至 AWS S3 儲存桶。
+                        </div>
+                        
+                        <!-- Link Group -->
+                        <div class="result-link-group" id="result-link-group">
+                            <span class="result-link-url" id="result-link-url">https://...</span>
+                            <button type="button" class="copy-url-btn" id="btn-copy-url">複製網址</button>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div class="preview-box" id="preview-box">
+                            <img src="" id="preview-image" alt="Uploaded Image Preview">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Console logs & Metadata Specs -->
+                <div class="detail-card control-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="card-header">
+                            <h3>儲存桶設定資訊</h3>
+                        </div>
+                        <div class="system-info-list" style="margin-bottom: 1.5rem;">
+                            <div class="info-row">
+                                <span class="info-label">目標 Bucket</span>
+                                <span class="info-value">{{ bucket_name }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">AWS 台北區域</span>
+                                <span class="info-value">{{ region_name }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">憑證驗證模式</span>
+                                <span class="info-value" style="color: var(--accent-emerald);">IAM Instance Profile</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">直接記憶體串流</span>
+                                <span class="info-value" style="color: var(--accent-emerald);">啟用 (不佔磁碟)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console Box -->
+                    <div style="flex-grow: 1; display: flex; flex-direction: column;">
+                        <div class="console-box" style="flex-grow: 1;">
+                            <div class="console-header">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                                <span class="console-title">S3 Client Engine Console</span>
+                            </div>
+                            <div class="console-body" id="s3-console-logs" style="max-height: 250px;">
+                                <div class="log-line text-muted">[engine] S3 上傳服務模組載入完成。</div>
+                                <div class="log-line text-muted">[engine] 當前環境憑證：自動尋找 IAM Role 中...</div>
+                                <div class="log-line text-info">[engine] 目標儲存桶：{{ bucket_name }} ({{ region_name }})</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script Section for interactive client logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+            const fileDetails = document.getElementById('file-details');
+            const fileDisplayName = document.getElementById('file-display-name');
+            const fileDisplaySize = document.getElementById('file-display-size');
+            const btnRemoveFile = document.getElementById('btn-remove-file');
+            const btnSubmitUpload = document.getElementById('btn-submit-upload');
+            const uploadForm = document.getElementById('upload-form');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            
+            // Console & Result Box Elements
+            const s3ConsoleLogs = document.getElementById('s3-console-logs');
+            const resultBox = document.getElementById('result-box');
+            const resultStatusDot = document.getElementById('result-status-dot');
+            const resultTitle = document.getElementById('result-title');
+            const resultMessage = document.getElementById('result-message');
+            const resultLinkGroup = document.getElementById('result-link-group');
+            const resultLinkUrl = document.getElementById('result-link-url');
+            const btnCopyUrl = document.getElementById('btn-copy-url');
+            const previewBox = document.getElementById('preview-box');
+            const previewImage = document.getElementById('preview-image');
+
+            let selectedFile = null;
+
+            // Helper: Console logger
+            function addS3ConsoleLog(message, type = 'info') {
+                const time = new Date().toLocaleTimeString();
+                const logLine = document.createElement('div');
+                logLine.className = `log-line text-${type}`;
+                logLine.textContent = `[${time}] ${message}`;
+                s3ConsoleLogs.appendChild(logLine);
+                s3ConsoleLogs.scrollTop = s3ConsoleLogs.scrollHeight;
+            }
+
+            // Drag-and-Drop Handlers
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('dragover');
+                }, false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleFileSelection(files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+
+            // Handle selection
+            function handleFileSelection(file) {
+                selectedFile = file;
+                fileDisplayName.textContent = file.name;
+                
+                // Format size
+                const sizeKB = (file.size / 1024).toFixed(1);
+                fileDisplaySize.textContent = `${sizeKB} KB`;
+                
+                fileDetails.style.display = 'flex';
+                btnSubmitUpload.disabled = false;
+                
+                // Clear old results
+                resultBox.className = 'result-card';
+                previewBox.style.display = 'none';
+                
+                addS3ConsoleLog(`已選取本地檔案：${file.name} (${sizeKB} KB)`, 'info');
+            }
+
+            // Remove file click
+            btnRemoveFile.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetFileSelection();
+                addS3ConsoleLog('已取消選擇檔案。', 'info');
+            });
+
+            function resetFileSelection() {
+                selectedFile = null;
+                fileInput.value = '';
+                fileDetails.style.display = 'none';
+                btnSubmitUpload.disabled = true;
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+            }
+
+            // Copy URL click
+            btnCopyUrl.addEventListener('click', () => {
+                navigator.clipboard.writeText(resultLinkUrl.textContent)
+                    .then(() => {
+                        btnCopyUrl.textContent = '已複製！';
+                        addS3ConsoleLog('已成功複製 S3 檔案連結至剪貼簿。', 'success');
+                        setTimeout(() => {
+                            btnCopyUrl.textContent = '複製網址';
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        addS3ConsoleLog('複製失敗：' + err, 'error');
+                    });
+            });
+
+            // Modern AJAX Form Upload Handler with progress bar animation
+            uploadForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!selectedFile) return;
+
+                addS3ConsoleLog(`開始上傳檔案 '${selectedFile.name}' 到 S3 Bucket...`, 'info');
+                
+                // Disable UI during upload
+                btnSubmitUpload.disabled = true;
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '10%';
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                // Simulate/animate progress bar for smooth UX
+                let progress = 10;
+                const progressInterval = setInterval(() => {
+                    if (progress < 85) {
+                        progress += Math.floor(Math.random() * 8) + 2;
+                        progressBar.style.width = `${progress}%`;
+                    }
+                }, 150);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/feature3', true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                xhr.onload = function() {
+                    clearInterval(progressInterval);
+                    
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const response = JSON.parse(xhr.responseText);
+                        
+                        if (response.success) {
+                            progressBar.style.width = '100%';
+                            addS3ConsoleLog(`上傳引擎回應成功！檔案已順利發佈。`, 'success');
+                            addS3ConsoleLog(`S3 物件連結：${response.file_url}`, 'success');
+
+                            // Success box updates
+                            resultBox.className = 'result-card success-mode';
+                            resultTitle.textContent = '上傳成功 (Upload Success)';
+                            resultMessage.textContent = response.message || '檔案已直接利用 EC2 安全認證模式上傳至指定的 AWS S3 儲存區。';
+                            resultLinkGroup.style.display = 'flex';
+                            resultLinkUrl.textContent = response.file_url;
+                            
+                            // Image Preview if applicable
+                            const ext = response.filename.split('.').pop().toLowerCase();
+                            if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) {
+                                previewImage.src = response.file_url;
+                                previewBox.style.display = 'flex';
+                            } else {
+                                previewBox.style.display = 'none';
+                            }
+                        } else {
+                            handleFailure(response.error || '不明的伺服器回傳錯誤');
+                        }
+                    } else {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            handleFailure(response.error || `HTTP 錯誤：${xhr.status}`);
+                        } catch (err) {
+                            handleFailure(`連線錯誤，狀態碼：${xhr.status}`);
+                        }
+                    }
+                    
+                    btnSubmitUpload.disabled = false;
+                };
+
+                xhr.onerror = function() {
+                    clearInterval(progressInterval);
+                    handleFailure('網路連線失敗或 AWS S3 端點拒絕連線！');
+                    btnSubmitUpload.disabled = false;
+                };
+
+                function handleFailure(errorText) {
+                    progressBar.style.width = '0%';
+                    progressContainer.style.display = 'none';
+                    addS3ConsoleLog(`[ERROR] ${errorText}`, 'error');
+                    
+                    resultBox.className = 'result-card error-mode';
+                    resultTitle.textContent = '上傳失敗 (Upload Failed)';
+                    resultMessage.textContent = errorText;
+                    resultLinkGroup.style.display = 'none';
+                    previewBox.style.display = 'none';
+                }
+
+                xhr.send(formData);
+            });
+        });
+    </script>
+</body>
+</html>

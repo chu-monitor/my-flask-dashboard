@@ -78,3 +78,26 @@ def test_schedule_api(client):
     assert task1['status'] == 'completed'
     assert 'Team Sync' in task1['task']
 
+def test_feature3_get(client):
+    """Test that the feature3 upload page renders successfully."""
+    response = client.get('/feature3')
+    assert response.status_code == 200
+    assert b'AWS S3' in response.data
+    assert b'EC2 IAM' in response.data
+
+def test_feature3_post_empty(client):
+    """Test that uploading without any file returns a bad request error."""
+    # POST without files dict
+    response = client.post('/feature3', headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert response.status_code == 400
+    data = json.loads(response.data.decode('utf-8'))
+    assert data['success'] is False
+    assert '缺失' in data['error']
+
+    # POST with empty filename
+    response = client.post('/feature3', data={'file': (None, '')}, headers={'X-Requested-With': 'XMLHttpRequest'})
+    assert response.status_code == 400
+    data = json.loads(response.data.decode('utf-8'))
+    assert data['success'] is False
+    assert '尚未選擇' in data['error']
+

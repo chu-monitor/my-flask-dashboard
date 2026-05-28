@@ -1,6 +1,9 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, request
 import sys
 import platform
+import os
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 
 bp = Blueprint('main', __name__)
 
@@ -119,4 +122,74 @@ def schedule():
             }
         ]
     })
+
+@bp.route('/feature3', methods=['GET', 'POST'])
+def feature3():
+    """Handle Feature 3 file upload to S3 without hardcoded credentials."""
+    bucket_name = os.environ.get('S3_BUCKET_NAME', 'ckc101-18')
+    region_name = os.environ.get('AWS_DEFAULT_REGION', 'ap-east-2')
+    
+    if request.method == 'POST':
+        # Check if file part exists
+        if 'file' not in request.files:
+            error_msg = '檔案欄位缺失！'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'success': False, 'error': error_msg}), 400
+            return render_template('feature3.html', error=error_msg, bucket_name=bucket_name, region_name=region_name)
+            
+        file = request.files['file']
+        
+        # Check if user selected no file
+        if file.filename == '':
+            error_msg = '尚未選擇任何檔案！'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'success': False, 'error': error_msg}), 400
+            return render_template('feature3.html', error=error_msg, bucket_name=bucket_name, region_name=region_name)
+            
+        try:
+            # Initialize S3 client without credentials (automatically resolves EC2 IAM Role credentials)
+            s3_client = boto3.client('s3', region_name=region_name)
+            
+            # Direct in-memory stream upload (prevents disk space pollution on host machine)
+            s3_client.upload_fileobj(
+                file,
+                bucket_name,
+                file.filename,
+                ExtraArgs={
+                    'ContentType': file.content_type
+                }
+            )
+            
+            # S3 public URL format for ap-east-2 region
+            file_url = f"https://{bucket_name}.s3.{region_name}.amazonaws.com/{file.filename}"
+            success_msg = f"檔案 '{file.filename}' 已成功安全上傳至 S3！"
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({
+                    'success': True,
+                    'message': success_msg,
+                    'filename': file.filename,
+                    'file_url': file_url
+                })
+                
+            return render_template('feature3.html', success=success_msg, file_url=file_url, filename=file.filename, bucket_name=bucket_name, region_name=region_name)
+            
+        except (NoCredentialsError, PartialCredentialsError) as e:
+            error_msg = 'AWS 憑證解析失敗！請確認 EC2 Instance Profile 或 IAM 角色配置正確。'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'success': False, 'error': error_msg, 'details': str(e)}), 403
+            return render_template('feature3.html', error=error_msg, bucket_name=bucket_name, region_name=region_name)
+        except ClientError as e:
+            error_msg = f"AWS S3 服務錯誤：{e.response['Error']['Message']}"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'success': False, 'error': error_msg, 'details': str(e)}), 500
+            return render_template('feature3.html', error=error_msg, bucket_name=bucket_name, region_name=region_name)
+        except Exception as e:
+            error_msg = f"上傳錯誤：{str(e)}"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+                return jsonify({'success': False, 'error': error_msg}), 500
+            return render_template('feature3.html', error=error_msg, bucket_name=bucket_name, region_name=region_name)
+            
+    return render_template('feature3.html', bucket_name=bucket_name, region_name=region_name)
+
 
