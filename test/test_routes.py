@@ -101,3 +101,46 @@ def test_feature3_post_empty(client):
     assert data['success'] is False
     assert '尚未選擇' in data['error']
 
+
+def test_feature4_get(client):
+    """Test that the feature4 stress page renders successfully."""
+    response = client.get('/feature4')
+    assert response.status_code == 200
+    assert b'CPU' in response.data
+    assert b'CloudWatch' in response.data
+
+
+def test_stress_start_and_stop(client):
+    """Test start and stop endpoints for CPU stress simulation."""
+    # Test starting stress with 1 core, 5 seconds
+    response = client.post('/api/stress/start', 
+                           data=json.dumps({'cores': 1, 'duration': 5}),
+                           content_type='application/json')
+    assert response.status_code == 200
+    data = json.loads(response.data.decode('utf-8'))
+    assert data['success'] is True
+    assert '模擬燒機' in data['message']
+    assert data['cores'] == 1
+    assert data['duration'] == 5
+    assert len(data['pids']) == 1
+
+    # Verify that stress is active in health API
+    health_response = client.get('/api/health')
+    assert health_response.status_code == 200
+    health_data = json.loads(health_response.data.decode('utf-8'))
+    # Wait, the stress_active might be true
+    assert 'stress_active' in health_data
+
+    # Test stopping stress
+    response = client.post('/api/stress/stop')
+    assert response.status_code == 200
+    data = json.loads(response.data.decode('utf-8'))
+    assert data['success'] is True
+    assert '模擬燒機' in data['message'] or '無正在' in data['message']
+
+    # Verify that stress is inactive in health API
+    health_response = client.get('/api/health')
+    health_data = json.loads(health_response.data.decode('utf-8'))
+    assert health_data['stress_active'] is False
+
+

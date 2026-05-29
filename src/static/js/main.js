@@ -110,6 +110,19 @@ document.addEventListener('DOMContentLoaded', () => {
             memoryVal.textContent = data.memory_usage;
             cpuVal.textContent = data.cpu_load;
 
+            // Dynamically change CPU text color & shadow based on high load (Feature 4 stress indicator)
+            const cpuNumericVal = parseFloat(data.cpu_load);
+            if (cpuNumericVal >= 80) {
+                cpuVal.style.color = 'var(--accent-rose)';
+                cpuVal.style.textShadow = '0 0 10px rgba(244, 63, 94, 0.4)';
+            } else if (cpuNumericVal >= 50) {
+                cpuVal.style.color = '#f97316'; // Vivid orange
+                cpuVal.style.textShadow = 'none';
+            } else {
+                cpuVal.style.color = '';
+                cpuVal.style.textShadow = 'none';
+            }
+
             if (logOutput) {
                 addConsoleLog(`[api-call] Health status: ${data.status} | DB: ${data.database} | Load: ${data.cpu_load}`, 'success');
             }
@@ -277,4 +290,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchHealthStats();
     fetchStocks();
     fetchSchedule();
+
+    // Polling health metrics dynamically every 3 seconds to keep dashboard alive
+    const dashboardPollInterval = setInterval(() => {
+        // If we have navigated away or elements are not in view, this keeps working safely
+        if (cpuVal) {
+            fetchHealthStats(false);
+        }
+    }, 3000);
+
+    // Clean up interval if needed
+    window.addEventListener('beforeunload', () => {
+        clearInterval(dashboardPollInterval);
+    });
 });

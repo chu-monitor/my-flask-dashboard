@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroDash - CPU 模擬燒機控制台</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Custom Styles for CPU Stress */
+        .stress-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .stress-gauge-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            min-height: 200px;
+        }
+
+        /* Animated Flame Overlay when active */
+        .flame-bg {
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, rgba(249, 115, 22, 0.05) 50%, rgba(0,0,0,0) 80%);
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            animation: pulse-flame 2s infinite ease-in-out;
+        }
+
+        .stress-active .flame-bg {
+            opacity: 1;
+        }
+
+        @keyframes pulse-flame {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .gauge-display {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 1rem;
+        }
+
+        .gauge-value {
+            font-size: 3.5rem;
+            font-weight: 800;
+            font-family: var(--font-heading);
+            background: linear-gradient(135deg, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: background 0.5s ease;
+            display: inline-block;
+        }
+
+        .stress-active .gauge-value {
+            background: linear-gradient(135deg, #f97316, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: text-pulse 1s infinite alternate;
+        }
+
+        @keyframes text-pulse {
+            from { text-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+            to { text-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+        }
+
+        .gauge-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Reactive Progress Bar */
+        .stress-bar-container {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            height: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .stress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 10px;
+            transition: width 1s cubic-bezier(0.1, 0.8, 0.25, 1), background 0.5s ease;
+        }
+
+        .stress-active .stress-bar {
+            background: linear-gradient(90deg, #f97316, #ef4444);
+            animation: stress-bar-pulse 1.5s infinite;
+        }
+
+        @keyframes stress-bar-pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.7); }
+        }
+
+        /* Control Form Elements */
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .control-row label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .select-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: var(--transition-smooth);
+            cursor: pointer;
+        }
+
+        .select-input:focus {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-fire {
+            background: linear-gradient(135deg, #f97316, #ef4444);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            transition: var(--transition-smooth);
+            border: none;
+        }
+
+        .btn-fire:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+            opacity: 0.95;
+        }
+
+        .btn-fire:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-fire:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* Countdown display */
+        .countdown-display {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--accent-rose);
+            margin-top: 0.5rem;
+            display: none;
+            align-items: center;
+            gap: 0.35rem;
+            z-index: 2;
+        }
+
+        /* Tutorial styling */
+        .tutorial-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: 100%;
+        }
+
+        .step-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: var(--accent-cyan);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        .step-content h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .step-content p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .step-code {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+        }
+
+        .info-alert {
+            background: rgba(6, 182, 212, 0.05);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .info-alert-icon {
+            color: var(--accent-cyan);
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+
+        .badge-flame {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: var(--accent-rose);
+        }
+    </style>
+</head>
+<body>
+    <!-- Decorative background elements -->
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo"></div>
+                <span class="brand-name">AeroDash</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/" class="nav-item" id="nav-dashboard">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+                    </svg>
+                    <span>控制面板</span>
+                </a>
+                <a href="/feature3" class="nav-item" id="nav-feature3">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>S3 檔案上傳 (F3)</span>
+                </a>
+                <a href="/feature4" class="nav-item active" id="nav-feature4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                    </svg>
+                    <span>CPU 模擬燒機 (F4)</span>
+                </a>
+                <a href="/api/health" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>健康狀態 API</span>
+                </a>
+                <a href="/api/info" target="_blank" class="nav-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>系統資訊 API</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator-container">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">Port: 19191</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1>CPU 模擬燒機測試主控台</h1>
+                    <p class="subtitle">模擬高負載環境以測試 AWS EC2 CloudWatch 告警與 Auto Scaling 彈性擴展 (Feature 4)</p>
+                </div>
+                <div class="user-profile">
+                    <span class="badge badge-flame" title="當前運作模式：CPU 密集的數學與實體核心運算">
+                        🔥 實體多核心模擬
+                    </span>
+                </div>
+            </header>
+
+            <!-- Grid Layout -->
+            <section class="details-grid" style="flex-grow: 1;">
+                <!-- Left Column: CPU Stress Control -->
+                <div class="detail-card main-details" id="control-card-wrapper" style="display: flex; flex-direction: column;">
+                    <div class="card-header">
+                        <h3>燒機負載控制面板</h3>
+                        <span class="badge">Host Spec</span>
+                    </div>
+
+                    <!-- Gauge Display Card -->
+                    <div class="stress-gauge-card" id="stress-status-card">
+                        <div class="flame-bg"></div>
+                        <div class="gauge-display">
+                            <div class="gauge-value" id="realtime-cpu-val">0.0%</div>
+                        </div>
+                        <div class="gauge-label" id="stress-status-text">CPU 狀態：正常運作中</div>
+                        
+                        <!-- Reactive countdown -->
+                        <div class="countdown-display" id="stress-countdown">
+                            <span>🔥 模擬燒機中... 剩餘時間：</span>
+                            <span id="countdown-timer">00:00</span>
+                        </div>
+
+                        <!-- Reactive progress bar -->
+                        <div class="stress-bar-container">
+                            <div class="stress-bar" id="realtime-cpu-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Control Form Inputs -->
+                    <form id="stress-control-form">
+                        <div class="control-row">
+                            <label for="stress-cores">模擬核心負載數 (Cores to Stress)</label>
+                            <select class="select-input" id="stress-cores">
+                                {% for i in range(1, max_cores + 1) %}
+                                    <option value="{{ i }}" {% if i == max_cores %}selected{% endif %}>{{ i }} 核心 (最大值: {{ max_cores }} 核)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="control-row">
+                            <label for="stress-duration">燒機持續時間 (Duration Limit)</label>
+                            <select class="select-input" id="stress-duration">
+                                <option value="10">10 秒 (極速測試驗證)</option>
+                                <option value="30" selected>30 秒 (標準短週期測試)</option>
+                                <option value="60">1 分鐘 (推薦：配合 CloudWatch 短週期監控)</option>
+                                <option value="300">5 分鐘 (推薦：配合 CloudWatch 預設 5 分鐘監控)</option>
+                                <option value="600">10 分鐘 (深度燒機測試)</option>
+                                <option value="1800">30 分鐘 (極限實力測試)</option>
+                            </select>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                            <button type="button" class="btn btn-fire" style="flex: 1;" id="btn-start-stress">
+                                <span>🔥 啟動 CPU 爆衝模擬</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" style="flex: 1; border-color: rgba(244, 63, 94, 0.3); color: var(--accent-rose);" id="btn-stop-stress" disabled>
+                                <span>🛑 停止燒機運算</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Alert message area -->
+                    <div class="info-alert" style="margin-top: 1.5rem;">
+                        <span class="info-alert-icon">ℹ️</span>
+                        <div>
+                            <strong>本機保護提示：</strong>
+                            啟動高負載後，後端將會為每個核心指派一個計算子行程。您可以隨時點擊「停止燒機」立刻發送訊號中斷，確保本機資源瞬間釋放。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: AWS CloudWatch Integration Tutorial -->
+                <div class="detail-card control-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="card-header">
+                            <h3>AWS CloudWatch 告警設定指南</h3>
+                            <span class="badge" style="background: rgba(249, 115, 22, 0.15); border-color: rgba(249, 115, 22, 0.3); color: #f97316;">EC2 整合教學</span>
+                        </div>
+                        
+                        <div class="tutorial-card">
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                                當您將本專案部署到 EC2 後，請依照下方步驟設定 AWS 雲端警告，本頁面的燒機按鈕將會立刻觸發該警報：
+                            </p>
+                            
+                            <div class="step-list">
+                                <div class="step-item">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <h4>建立 CloudWatch 告警指標 (Alarm)</h4>
+                                        <p>前往 AWS 主控台 -> 搜尋 <span class="step-code">CloudWatch</span> -> 點選「告警 (Alarms)」 -> 建立告警指標，並選擇 <span class="step-code">EC2 > Per-Instance Metrics</span> -> 指標搜尋當前 EC2 實例的 <span class="step-code">CPUUtilization</span>。</p>
+                                    </div>
+                                </div>
+
+                                <div class="step-item">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <h4>設定負載條件與監控週期</h4>
+                                        <p>閾值條件設定為「大於/等於 (>=)」 -> 輸入 <span class="step-code">80%</span>，並將統計間隔設為「1 分鐘」或「5 分鐘」（配合您左側選擇的燒機持續時間），確保告警能靈敏捕捉負載爆衝。</p>
+                                    </div>
+                                </div>
+
+                                <div class="step-item">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <h4>配置通知與觸發 Amazon SNS</h4>
+                                        <p>在動作設定 (Actions) 選擇「警報狀態 (In Alarm)」，觸發目標選擇新建立或現有的 <span class="step-code">Amazon SNS 主題</span>，設定您的電子郵件或 Slack webhook 接收 CloudWatch 自動發送的警告通知郵件！</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Console logs displaying engine output -->
+                    <div style="flex-grow: 1; display: flex; flex-direction: column; margin-top: 1.5rem;">
+                        <div class="console-box" style="flex-grow: 1;">
+                            <div class="console-header">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                                <span class="console-title">Stress Simulator Engine Console</span>
+                            </div>
+                            <div class="console-body" id="stress-console-logs" style="max-height: 180px;">
+                                <div class="log-line text-muted">[system] 燒機模擬模組已就緒。</div>
+                                <div class="log-line text-muted">[system] 核心偵測：可用實體 CPU 核心為 {{ max_cores }}。</div>
+                                <div class="log-line text-info">[system] 安全警示：單次最高限時 60 分鐘。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script Section for interactive client logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnStartStress = document.getElementById('btn-start-stress');
+            const btnStopStress = document.getElementById('btn-stop-stress');
+            const selectCores = document.getElementById('stress-cores');
+            const selectDuration = document.getElementById('stress-duration');
+            const realtimeCpuVal = document.getElementById('realtime-cpu-val');
+            const realtimeCpuBar = document.getElementById('realtime-cpu-bar');
+            const countdownTimer = document.getElementById('countdown-timer');
+            const stressCountdown = document.getElementById('stress-countdown');
+            const stressStatusCard = document.getElementById('stress-status-card');
+            const stressStatusText = document.getElementById('stress-status-text');
+            const stressConsoleLogs = document.getElementById('stress-console-logs');
+
+            let metricsInterval = null;
+            let countdownInterval = null;
+            let countdownRemaining = 0;
+
+            // Helper: Console logger
+            function addStressLog(message, type = 'info') {
+                const time = new Date().toLocaleTimeString();
+                const logLine = document.createElement('div');
+                logLine.className = `log-line text-${type}`;
+                logLine.textContent = `[${time}] ${message}`;
+                stressConsoleLogs.appendChild(logLine);
+                stressConsoleLogs.scrollTop = stressConsoleLogs.scrollHeight;
+            }
+
+            // Function: Poll dynamic health metrics
+            async function updateMetrics() {
+                try {
+                    const response = await fetch('/api/health');
+                    if (!response.ok) throw new Error('連線失敗');
+                    const data = await response.json();
+                    
+                    const cpuStr = data.cpu_load;
+                    const cpuVal = parseFloat(cpuStr);
+                    
+                    realtimeCpuVal.textContent = cpuStr;
+                    realtimeCpuBar.style.width = cpuStr;
+
+                    // Dynamic styling based on load
+                    if (cpuVal >= 80) {
+                        realtimeCpuVal.style.color = '#ef4444'; // Red
+                        stressStatusCard.classList.add('stress-active');
+                        stressStatusText.textContent = `CPU 負載危險：爆衝進行中 (核心負載過高)`;
+                    } else if (cpuVal >= 50) {
+                        realtimeCpuVal.style.color = '#f97316'; // Orange
+                        stressStatusText.textContent = `CPU 負載中等：系統處理中`;
+                    } else {
+                        realtimeCpuVal.style.color = ''; // Default
+                        if (!data.stress_active) {
+                            stressStatusCard.classList.remove('stress-active');
+                            stressStatusText.textContent = `CPU 狀態：正常運作中`;
+                        }
+                    }
+
+                    // Handle status button toggling if backend finished stress early
+                    if (!data.stress_active && btnStartStress.disabled) {
+                        finishStressUI();
+                        addStressLog('模擬燒機已結束，系統負載正在降溫。', 'success');
+                    }
+                } catch (error) {
+                    addStressLog('讀取即時 CPU 指標失敗: ' + error.message, 'error');
+                }
+            }
+
+            // Start polling health metrics
+            updateMetrics();
+            metricsInterval = setInterval(updateMetrics, 2000);
+
+            // Format seconds into MM:SS
+            function formatTime(sec) {
+                const m = Math.floor(sec / 60).toString().padStart(2, '0');
+                const s = (sec % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            }
+
+            // Function to change UI to Active state
+            function startStressUI(cores, duration) {
+                btnStartStress.disabled = true;
+                btnStopStress.disabled = false;
+                selectCores.disabled = true;
+                selectDuration.disabled = true;
+                stressStatusCard.classList.add('stress-active');
+                
+                // Set up countdown
+                countdownRemaining = duration;
+                countdownTimer.textContent = formatTime(countdownRemaining);
+                stressCountdown.style.display = 'flex';
+
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(() => {
+                    countdownRemaining--;
+                    if (countdownRemaining <= 0) {
+                        clearInterval(countdownInterval);
+                        finishStressUI();
+                    } else {
+                        countdownTimer.textContent = formatTime(countdownRemaining);
+                    }
+                }, 1000);
+            }
+
+            // Function to restore UI to normal
+            function finishStressUI() {
+                btnStartStress.disabled = false;
+                btnStopStress.disabled = true;
+                selectCores.disabled = false;
+                selectDuration.disabled = false;
+                stressCountdown.style.display = 'none';
+                stressStatusCard.classList.remove('stress-active');
+                clearInterval(countdownInterval);
+                updateMetrics();
+            }
+
+            // Trigger Start Burn-in via API
+            btnStartStress.addEventListener('click', async () => {
+                const cores = selectCores.value;
+                const duration = selectDuration.value;
+
+                addStressLog(`嘗試呼叫 API 啟動模擬，配置核心數: ${cores} 核，持續時間: ${duration} 秒...`, 'info');
+                
+                try {
+                    const response = await fetch('/api/stress/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ cores: parseInt(cores), duration: parseInt(duration) })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        addStressLog(data.message, 'success');
+                        addStressLog(`已派生背景行程，目標行程 PIDs: ${data.pids.join(', ')}`, 'success');
+                        startStressUI(cores, duration);
+                        // Trigger immediate metrics update
+                        setTimeout(updateMetrics, 500);
+                    } else {
+                        addStressLog(`[ERROR] ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    addStressLog(`[ERROR] 連線至後端服務失敗: ${error.message}`, 'error');
+                }
+            });
+
+            // Trigger Stop Burn-in via API
+            btnStopStress.addEventListener('click', async () => {
+                addStressLog('正在發送中斷訊號，要求立即停止燒機...', 'info');
+
+                try {
+                    const response = await fetch('/api/stress/stop', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addStressLog(data.message, 'success');
+                        finishStressUI();
+                    } else {
+                        addStressLog(`[ERROR] ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    addStressLog(`[ERROR] 中斷失敗: ${error.message}`, 'error');
+                }
+            });
+
+            // Clean up intervals on page close
+            window.addEventListener('beforeunload', () => {
+                clearInterval(metricsInterval);
+                clearInterval(countdownInterval);
+            });
+        });
+    </script>
+</body>
+</html>
